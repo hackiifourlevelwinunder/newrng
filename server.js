@@ -10,42 +10,45 @@ const io = new Server(server);
 app.use(express.static("public"));
 
 let currentNumber = null;
-let nextNumber = null;
+let nextNumber = generateSecureNumber();
 
-// Secure RNG (OpenSSL RAND_bytes equivalent in Node.js)
+let lastSecond = -1;
+
+// ✅ Secure RNG (OpenSSL RAND_bytes)
 function generateSecureNumber() {
-  const buffer = crypto.randomBytes(1);
-  return buffer[0] % 10; // 0-9
+  const buf = crypto.randomBytes(1);
+  return buf[0] % 10; // 0–9
 }
 
-// Main scheduler
-function scheduleNumbers() {
+function scheduler() {
   const now = new Date();
-  const seconds = now.getSeconds();
+  const sec = now.getSeconds();
 
-  // हर मिनट की शुरुआत में नया number बनाओ
-  if (seconds === 0) {
-    currentNumber = nextNumber !== null ? nextNumber : generateSecureNumber();
+  // Prevent skip: only act when sec actually changes
+  if (sec === lastSecond) return;
+  lastSecond = sec;
+
+  // :00 → Final
+  if (sec === 0) {
+    currentNumber = nextNumber;
+    io.emit("reveal", currentNumber);
+    console.log("✅ Final:", currentNumber);
+
+    // अगली बार के लिए नया number तैयार करो
     nextNumber = generateSecureNumber();
-    io.emit("reveal", currentNumber); // final reveal
-    console.log("Reveal:", currentNumber);
   }
 
-  // 40s पर next number का preview दिखाओ
-  if (seconds === 40) {
-    if (nextNumber === null) {
-      nextNumber = generateSecureNumber();
-    }
+  // :20 → Preview
+  if (sec === 20) {
     io.emit("preview", nextNumber);
-    console.log("Preview:", nextNumber);
+    console.log("⏳ Preview:", nextNumber);
   }
 }
 
-setInterval(scheduleNumbers, 1000);
+setInterval(scheduler, 200); // हर 0.2 सेकंड चेक → कोई skip नहीं
 
 io.on("connection", (socket) => {
-  console.log("User connected");
-
+  console.log("🔗 User connected");
   if (currentNumber !== null) {
     socket.emit("reveal", currentNumber);
   }
@@ -53,5 +56,5 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
