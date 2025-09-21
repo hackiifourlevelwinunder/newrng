@@ -1,57 +1,57 @@
 import express from "express";
-import { createServer } from "http";
+import http from "http";
 import { Server } from "socket.io";
-import path from "path";
-import { fileURLToPath } from "url";
 import crypto from "crypto";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
-const server = createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const server = http.createServer(app);
+const io = new Server(server);
 
-// serve static frontend
-app.use(express.static(path.join(__dirname, "public")));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+app.use(express.static("public"));
 
-// RNG function using OpenSSL RAND_bytes
-function generateDigit() {
-  const buf = crypto.randomBytes(1);
-  return buf[0] % 10; // 0-9 digit
+let currentNumber = null;
+let nextNumber = null;
+
+// Secure RNG (OpenSSL RAND_bytes equivalent in Node.js)
+function generateSecureNumber() {
+  const buffer = crypto.randomBytes(1);
+  return buffer[0] % 10; // 0-9
 }
 
-let nextDigit = null;
-
-// schedule every minute
-function scheduleDigit() {
+// Main scheduler
+function scheduleNumbers() {
   const now = new Date();
-  const msToNextMinute = 60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
+  const seconds = now.getSeconds();
 
-  setTimeout(() => {
-    nextDigit = generateDigit();
+  // हर मिनट की शुरुआत में नया number बनाओ
+  if (seconds === 0) {
+    currentNumber = nextNumber !== null ? nextNumber : generateSecureNumber();
+    nextNumber = generateSecureNumber();
+    io.emit("reveal", currentNumber); // final reveal
+    console.log("Reveal:", currentNumber);
+  }
 
-    // send preview 40s before reveal
-    setTimeout(() => {
-      io.emit("preview", { digit: nextDigit });
-    }, 20000); // 60s - 40s = 20s
-
-    // send reveal at exact minute
-    setTimeout(() => {
-      io.emit("reveal", { digit: nextDigit });
-      scheduleDigit();
-    }, 60000);
-  }, msToNextMinute);
+  // 40s पर next number का preview दिखाओ
+  if (seconds === 40) {
+    if (nextNumber === null) {
+      nextNumber = generateSecureNumber();
+    }
+    io.emit("preview", nextNumber);
+    console.log("Preview:", nextNumber);
+  }
 }
 
-scheduleDigit();
+setInterval(scheduleNumbers, 1000);
 
 io.on("connection", (socket) => {
-  console.log("Client connected");
+  console.log("User connected");
+
+  if (currentNumber !== null) {
+    socket.emit("reveal", currentNumber);
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
