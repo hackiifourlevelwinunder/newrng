@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hackii RNG</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { background:#0c1a2a; color:white; font-family:sans-serif; text-align:center; padding:40px; }
+    .digit { font-size:80px; margin:20px; }
+    .clock { margin:10px; font-size:20px; }
+  </style>
+</head>
+<body>
+  <h1>Hackii - OpenSSL RNG</h1>
+  <div class="clock">
+    US Time: <span id="us"></span><br>
+    India Time: <span id="india"></span>
+  </div>
+  <div class="digit" id="status">Waiting...</div>
+
+  <script>
+    const socket = io();
+    const statusEl = document.getElementById("status");
+
+    socket.on("preview", (data) => {
+      statusEl.textContent = "Preview: " + data.digit;
+    });
+
+    socket.on("reveal", (data) => {
+      statusEl.textContent = "Final: " + data.digit;
+    });
+
+    function updateClocks() {
+      const now = new Date();
+      document.getElementById("us").textContent =
+        new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York" });
+      document.getElementById("india").textContent =
+        new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" });
+    }
+    setInterval(updateClocks, 1000);
+    updateClocks();
+  </script>
+</body>
+</html>
