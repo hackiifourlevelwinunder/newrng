@@ -1,45 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Hackii RNG</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { background:#0c1a2a; color:white; font-family:sans-serif; text-align:center; padding:40px; }
-    .digit { font-size:80px; margin:20px; }
-    .clock { margin:10px; font-size:20px; }
+    body {
+      background: #0c1a2a;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 50px;
+    }
+    h1 { font-size: 2.5rem; margin-bottom: 20px; }
+    .number { font-size: 4rem; margin: 20px 0; }
+    .preview { color: #4dabf7; }
+    .final { color: #22c55e; }
+    .clock { margin-top: 30px; font-size: 1.5rem; }
   </style>
 </head>
 <body>
-  <h1>Hackii - OpenSSL RNG</h1>
-  <div class="clock">
-    US Time: <span id="us"></span><br>
-    India Time: <span id="india"></span>
-  </div>
-  <div class="digit" id="status">Waiting...</div>
+  <h1>🔐 Hackii RNG</h1>
+  <div id="number" class="number">Waiting...</div>
+  <div class="clock" id="clock"></div>
 
   <script>
     const socket = io();
-    const statusEl = document.getElementById("status");
+    const numberDiv = document.getElementById("number");
+    const clockDiv = document.getElementById("clock");
 
-    socket.on("preview", (data) => {
-      statusEl.textContent = "Preview: " + data.digit;
-    });
-
-    socket.on("reveal", (data) => {
-      statusEl.textContent = "Final: " + data.digit;
-    });
-
-    function updateClocks() {
+    // Clock
+    setInterval(() => {
       const now = new Date();
-      document.getElementById("us").textContent =
-        new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York" });
-      document.getElementById("india").textContent =
-        new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" });
-    }
-    setInterval(updateClocks, 1000);
-    updateClocks();
+      clockDiv.textContent = now.toLocaleTimeString();
+    }, 1000);
+
+    // Preview handler
+    socket.on("preview", (num) => {
+      numberDiv.textContent = `⏳ Upcoming: ${num}`;
+      numberDiv.className = "number preview";
+    });
+
+    // Reveal handler
+    socket.on("reveal", (num) => {
+      numberDiv.textContent = `✅ Final: ${num}`;
+      numberDiv.className = "number final";
+    });
   </script>
 </body>
 </html>
-￼Enter
